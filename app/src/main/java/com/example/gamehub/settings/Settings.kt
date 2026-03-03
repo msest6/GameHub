@@ -25,6 +25,12 @@ data class DartThrow(
     val playerIndex: Int,
     val throws: List<Int>
 )
+
+@Serializable
+data class CheckoutTable(
+    val score: Int,
+    val hand: List<String>
+)
 @Serializable
 data class BoardGamePlayer(
     var playerName: String,

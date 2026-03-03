@@ -63,6 +63,7 @@ import androidx.compose.material.icons.filled.ExposurePlus1
 import androidx.compose.material.icons.filled.ExposureNeg1
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.toMutableStateList
@@ -91,6 +92,7 @@ import androidx.compose.ui.unit.center
 import androidx.compose.ui.window.Dialog
 import androidx.datastore.preferences.core.edit
 import com.example.gamehub.settings.BoardGamePlayer
+import com.example.gamehub.settings.CheckoutTable
 import com.example.gamehub.settings.DartThrow
 import com.example.gamehub.settings.Preference
 import com.example.gamehub.settings.Settings
@@ -99,6 +101,8 @@ import com.example.gamehub.settings.dataStore
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
+import kotlinx.serialization.decodeFromString
+import kotlinx.serialization.json.Json
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
@@ -164,6 +168,10 @@ class MainActivity : ComponentActivity() {
             LaunchedEffect(Unit) {
                 dartsCurrentPlayer = Settings(context).get(Preference.DARTS_CURRENT_PLAYER)
             }
+
+            val inputStream = resources.openRawResource(R.raw.checkout_table)
+            val json = inputStream.bufferedReader().use { it.readText() }
+            val checkoutTable = Json.decodeFromString<List<CheckoutTable>>(json)
 
             val boardGamePlayers = remember { mutableStateListOf<BoardGamePlayer>() }
 
@@ -304,7 +312,10 @@ class MainActivity : ComponentActivity() {
                                 true,
                                 dartsGameMoves,
                                 dartsCurrentPlayer,
+                                checkoutTable,
                                 saveMoves = { moves ->
+                                    //dartsGameMoves.clear()
+                                    //dartsGameMoves.addAll(moves)
                                     scope.launch {
                                         Settings(context).saveDartsGame(moves)
                                     }
@@ -326,7 +337,7 @@ class MainActivity : ComponentActivity() {
                             buttonColors,
                             title = "Pikado: $dartsGame",
                             onArrowClick = "dartsMenu",
-                            content = { Darts(navController, buttonColors, dartsPlayersNames, dartsGame, dartsDoubleIn, dartsDoubleOut, false, dartsGameMoves, dartsCurrentPlayer,
+                            content = { Darts(navController, buttonColors, dartsPlayersNames, dartsGame, dartsDoubleIn, dartsDoubleOut, false, dartsGameMoves, dartsCurrentPlayer, checkoutTable,
                                 saveMoves = { moves ->
                                     scope.launch {
                                         Settings(context).saveDartsGame(moves)
@@ -551,8 +562,6 @@ fun SettingsScreen(navController: NavController,
             }
         }
     }
-
-
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -1268,10 +1277,16 @@ fun DartsNewGame(navController: NavController, buttonColors: ButtonColors, onBut
     var showError2 by remember { mutableStateOf(false) }
     var showError3 by remember { mutableStateOf(false) }
     val possibleGamesList = remember { mutableStateListOf("301", "501", "701", "901") } //TODO: dodaj cricket
+    val focusManager = LocalFocusManager.current
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .padding(16.dp)
+            .padding(10.dp)
+            .pointerInput(Unit){
+                detectTapGestures {
+                    focusManager.clearFocus()
+                }
+            }
     ) {
         Column(
             modifier = Modifier
@@ -1653,6 +1668,7 @@ fun Darts(
     loadGame: Boolean,
     gameMoves: MutableList<DartThrow>,
     currentPlayer: Int,
+    checkoutTable: List<CheckoutTable>,
     saveMoves: (List<DartThrow>) -> Unit,
     saveCurrPlayer: (Int) -> Unit
 ) {
@@ -1667,18 +1683,17 @@ fun Darts(
     var strelica3 by remember { mutableIntStateOf(0) }
     var strelica3tekst by remember { mutableStateOf("") }
     var brojStrelica by remember { mutableIntStateOf(3) }
-    val opacity1 by remember { derivedStateOf {if (strelica1tekst == "") 1f else 0.3f} }
-    val opacity2 by remember { derivedStateOf {if (strelica2tekst == "") 1f else 0.3f} }
-    val opacity3 by remember { derivedStateOf {if (strelica3tekst == "") 1f else 0.3f} }
+    var opacity1 by remember { mutableFloatStateOf(0.3f) }
+    var opacity2 by remember { mutableFloatStateOf(0.3f) }
+    var opacity3 by remember { mutableFloatStateOf(0.3f) }
     val scores = remember(playerList.size) {
-        MutableList(playerList.size) { 0 }.toMutableStateList()
+        MutableList(playerList.size) { dartsGame.toInt() }.toMutableStateList()
     }
     val winners = remember { mutableStateListOf<String>() }
 
-
     if (currentPlayer == 0 && winners.isEmpty()){
         for (i in scores) {
-            if (i == dartsGame.toInt()) {
+            if (i == 0) {
                 winners.add(playerList[scores.indexOf(i)])
             }
         }
@@ -1719,7 +1734,7 @@ fun Darts(
                             onClick = {
                                 val moves: List<DartThrow> = listOf()
                                 saveMoves(moves)
-                                navController.navigate("darts")
+                                navController.navigate("dartsNew")
                             },
                             modifier = Modifier
                                 .width(screenWidth / 2)
@@ -1739,11 +1754,11 @@ fun Darts(
 
     LaunchedEffect(loadGame) {
         if (loadGame) {
-            scores.indices.forEach { scores[it] = 0 }
+            scores.indices.forEach { scores[it] = dartsGame.toInt() }
 
             for (game in gameMoves) {
                 for (dart in game.throws) {
-                    scores[game.playerIndex] += dart
+                    scores[game.playerIndex] -= dart
                 }
             }
         }
@@ -1752,6 +1767,24 @@ fun Darts(
         if (!loadGame){
             gameMoves.clear()
             saveMoves(gameMoves)
+        }
+    }
+
+    LaunchedEffect(brojStrelica) {
+        val sum = scores[currentPlayer] - strelica1 - strelica2 - strelica3
+        for (item in checkoutTable) {
+            if (item.score == sum){
+                if (strelica1 == 0) {
+                    strelica1tekst = item.hand[0]
+                    strelica2tekst = item.hand[1]
+                    strelica3tekst = item.hand[2]
+                } else if (strelica2 == 0) {
+                    strelica2tekst = item.hand[0]
+                    strelica3tekst = item.hand[1]
+                } else if (strelica3 == 0) {
+                    strelica3tekst = item.hand[0]
+                }
+            }
         }
     }
 
@@ -1848,8 +1881,15 @@ fun Darts(
         }
     }
 
+    val focusManager = LocalFocusManager.current
     Box(
-        modifier = Modifier.fillMaxSize()
+        modifier = Modifier
+            .fillMaxSize()
+            .pointerInput(Unit){
+                detectTapGestures {
+                    focusManager.clearFocus()
+                }
+            }
     ) {
         Column(
             modifier = Modifier.align(Alignment.TopStart),
@@ -1867,7 +1907,7 @@ fun Darts(
                     modifier = Modifier
                         .size(48.dp)
                         .padding(10.dp)
-                        .alpha(opacity1)
+                        .alpha(if (brojStrelica == 3) 1f else 0.3f)
                         .clickable {
                             if (strelica1tekst != "" && brojStrelica == 2) {
                                 strelica1tekst = ""
@@ -1877,7 +1917,8 @@ fun Darts(
                     colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary)
                 )
                 Text(
-                    text = strelica1tekst
+                    text = strelica1tekst,
+                    modifier = Modifier.alpha(opacity1)
                 )
             }
             Row(
@@ -1891,7 +1932,7 @@ fun Darts(
                     modifier = Modifier
                         .size(48.dp)
                         .padding(10.dp)
-                        .alpha(opacity2)
+                        .alpha(if (brojStrelica >= 2) 1f else 0.3f)
                         .clickable {
                             if (strelica2tekst != "" && brojStrelica == 1) {
                                 strelica2tekst = ""
@@ -1901,7 +1942,8 @@ fun Darts(
                     colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary)
                 )
                 Text(
-                    text = strelica2tekst
+                    text = strelica2tekst,
+                    modifier = Modifier.alpha(opacity2)
                 )
             }
             Row(
@@ -1915,7 +1957,7 @@ fun Darts(
                     modifier = Modifier
                         .size(48.dp)
                         .padding(10.dp)
-                        .alpha(opacity3)
+                        .alpha(if (brojStrelica >= 1) 1f else 0.3f)
                         .clickable {
                             if (strelica3tekst != "" && brojStrelica == 0) {
                                 strelica3tekst = ""
@@ -1925,7 +1967,8 @@ fun Darts(
                     colorFilter = ColorFilter.tint(MaterialTheme.colorScheme.primary)
                 )
                 Text(
-                    text = strelica3tekst
+                    text = strelica3tekst,
+                    modifier = Modifier.alpha(opacity3)
                 )
             }
         }
@@ -1958,44 +2001,44 @@ fun Darts(
                 modifier = Modifier.padding(16.dp),
                 colors = buttonColors,
                 onClick = {
-                    if (brojStrelica == 0){
-                        if (scores[currentPlayer] == 0 && doubleIn){
+
+                        if (scores[currentPlayer] == dartsGame.toInt() && doubleIn){
                             if ("2x" in strelica1tekst){
-                                scores[currentPlayer] += strelica1 + strelica2 + strelica3
+                                scores[currentPlayer] -= strelica1 + strelica2 + strelica3
                             }
                             else if ("2x" in strelica2tekst) {
                                 strelica1 = 0
-                                scores[currentPlayer] += strelica2 + strelica3
+                                scores[currentPlayer] -= strelica2 + strelica3
                             }
                             else if ("2x" in strelica3tekst) {
                                 strelica2 = 0
                                 strelica1 = 0
-                                scores[currentPlayer] += strelica3
+                                scores[currentPlayer] -= strelica3
                             } else {
                                 strelica3 = 0
                                 strelica2 = 0
                                 strelica1 = 0
                             }
                         } else {
-                            val sum = scores[currentPlayer] + strelica1 + strelica2 + strelica3
-                            if (sum < dartsGame.toInt())
+                            val sum = scores[currentPlayer] - strelica1 - strelica2 - strelica3
+                            if (sum > 0)
                                 if (doubleOut) {
-                                    if (sum + 1 != dartsGame.toInt()) {
+                                    if (sum != 1) {
                                         scores[currentPlayer] = sum
                                     }
                                 } else {
                                     scores[currentPlayer] = sum
                                 }
-                            else if (sum == dartsGame.toInt()) {
+                            else if (sum == 0) {
                                 if (doubleOut) {
                                     if ("2x" in strelica3tekst) {
-                                        scores[currentPlayer] = sum
+                                        scores[currentPlayer] = 0
                                     } else if (strelica3 == 0) {
                                         if ("2x" in strelica2tekst) {
-                                            scores[currentPlayer] = sum
+                                            scores[currentPlayer] = 0
                                         } else if (strelica2 == 0) {
                                             if ("2x" in strelica1tekst) {
-                                                scores[currentPlayer] = sum
+                                                scores[currentPlayer] = 0
                                             } else {
                                                 strelica1 = 0
                                             }
@@ -2009,7 +2052,7 @@ fun Darts(
                                         strelica1 = 0
                                     }
                                 } else {
-                                    scores[currentPlayer] = sum
+                                    scores[currentPlayer] = 0
                                 }
                             }
                         }
@@ -2022,7 +2065,6 @@ fun Darts(
                         strelica2tekst = ""
                         strelica3tekst = ""
                         brojStrelica = 3
-                    }
                 }
             ) {
                 Text(text = "Spremi",
@@ -2119,18 +2161,21 @@ fun Darts(
                             strelica1 = finalScore
                             strelica1tekst = "$strelica1$addOn"
                             brojStrelica -= 1
+                            opacity1 = 1f
                         }
 
                         2 -> {
                             strelica2 = finalScore
                             strelica2tekst = "$strelica2$addOn"
                             brojStrelica -= 1
+                            opacity2 = 1f
                         }
 
                         1 -> {
                             strelica3 = finalScore
                             strelica3tekst = "$strelica3$addOn"
                             brojStrelica -= 1
+                            opacity3 = 1f
                         }
                     }
                 }
@@ -2143,7 +2188,7 @@ fun Darts(
 fun BoardGames(navController: NavController, buttonColors: ButtonColors, boardGamePlayers: List<BoardGamePlayer>, boardGameWinScore: Int, savePlayers: (List<BoardGamePlayer>) -> Unit, saveWinScore: (Int) -> Unit) {
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp.dp
-    var winScore by remember { mutableStateOf("0") }
+    var winScore by remember { mutableStateOf(boardGameWinScore.toString()) }
     val playerList = remember { mutableStateListOf<BoardGamePlayer>() }
     var showError1 by remember { mutableStateOf(false) }
     var popUp1 by remember { mutableStateOf(false) }
@@ -2226,7 +2271,7 @@ fun BoardGames(navController: NavController, buttonColors: ButtonColors, boardGa
                             if (!focusState.isFocused) {
                                 val winScoreInt = winScore.toIntOrNull()
                                 if (winScoreInt == null) {
-                                    winScore = "0"
+                                    winScore = boardGameWinScore.toString()
                                     showError1 = true
                                 } else {
                                     saveWinScore(winScore.toInt())
@@ -2604,6 +2649,7 @@ fun BoardGames(navController: NavController, buttonColors: ButtonColors, boardGa
                             Spacer(modifier = Modifier.width(screenWidth / 10))
                             Button(
                                 onClick = {
+                                    popUp3 = false
                                     for (player in playerList) {
                                         player.score = 0
                                         player.winNumber = 0
