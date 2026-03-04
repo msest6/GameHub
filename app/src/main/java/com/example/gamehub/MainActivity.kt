@@ -70,6 +70,9 @@ import androidx.compose.runtime.toMutableStateList
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.focusRestorer
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -83,8 +86,10 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.IntOffset
@@ -1258,6 +1263,7 @@ fun DartsMenu(navController: NavController, buttonColors: ButtonColors) {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
         /**
          * Prikazuje grid za unos parametara igre
@@ -1278,6 +1284,7 @@ fun DartsNewGame(navController: NavController, buttonColors: ButtonColors, onBut
     var showError3 by remember { mutableStateOf(false) }
     val possibleGamesList = remember { mutableStateListOf("301", "501", "701", "901") } //TODO: dodaj cricket
     val focusManager = LocalFocusManager.current
+    var expanded by remember { mutableStateOf(false) }
     Box(
         modifier = Modifier
             .fillMaxSize()
@@ -1300,26 +1307,39 @@ fun DartsNewGame(navController: NavController, buttonColors: ButtonColors, onBut
                     .padding(16.dp)
                     .background(MaterialTheme.colorScheme.background)
             ) {
-                OutlinedTextField(
-                    value = newGame,
-                    onValueChange = { newText ->
-                        newGame = newText
-                    },
-                    label = { Text("Igra:") },
-                    singleLine = true,
-                    modifier = Modifier
-                        .width(screenWidth / 3f)
-                        .onFocusChanged { focusState ->
-                            if (!focusState.isFocused) {
-                                if (newGame !in possibleGamesList) {
-                                    newGame = "901"
-                                    showError2 = true
-                                } else {
-                                    if (showError2) showError2 = false
+                ExposedDropdownMenuBox(
+                    expanded = expanded,
+                    onExpandedChange = { expanded = !expanded }
+                ) {
+                    OutlinedTextField(
+                        value = newGame,
+                        onValueChange = {},
+                        readOnly = true,
+                        label = { Text("Igra:") },
+                        trailingIcon = {
+                            ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                        },
+                        modifier = Modifier
+                            .menuAnchor()
+                            .width(screenWidth / 3f)
+                    )
+
+                    ExposedDropdownMenu(
+                        expanded = expanded,
+                        onDismissRequest = { expanded = false }
+                    ) {
+                        possibleGamesList.forEach { game ->
+                            DropdownMenuItem(
+                                text = { Text(game) },
+                                onClick = {
+                                    newGame = game
+                                    expanded = false
+                                    showError2 = false
                                 }
-                            }
+                            )
                         }
-                )
+                    }
+                }
                 Spacer(modifier = Modifier.width(screenWidth / 7))
                 Column(
                     horizontalAlignment = Alignment.CenterHorizontally,
@@ -1910,6 +1930,7 @@ fun Darts(
                         .alpha(if (brojStrelica == 3) 1f else 0.3f)
                         .clickable {
                             if (strelica1tekst != "" && brojStrelica == 2) {
+                                strelica1 = 0
                                 strelica1tekst = ""
                                 brojStrelica += 1
                             }
@@ -1935,6 +1956,7 @@ fun Darts(
                         .alpha(if (brojStrelica >= 2) 1f else 0.3f)
                         .clickable {
                             if (strelica2tekst != "" && brojStrelica == 1) {
+                                strelica2 = 0
                                 strelica2tekst = ""
                                 brojStrelica += 1
                             }
@@ -1960,6 +1982,7 @@ fun Darts(
                         .alpha(if (brojStrelica >= 1) 1f else 0.3f)
                         .clickable {
                             if (strelica3tekst != "" && brojStrelica == 0) {
+                                strelica3 = 0
                                 strelica3tekst = ""
                                 brojStrelica += 1
                             }
@@ -2188,21 +2211,30 @@ fun Darts(
 fun BoardGames(navController: NavController, buttonColors: ButtonColors, boardGamePlayers: List<BoardGamePlayer>, boardGameWinScore: Int, savePlayers: (List<BoardGamePlayer>) -> Unit, saveWinScore: (Int) -> Unit) {
     val configuration = LocalConfiguration.current
     val screenWidth = configuration.screenWidthDp.dp
-    var winScore by remember { mutableStateOf(boardGameWinScore.toString()) }
+    var winScore by remember { mutableStateOf(TextFieldValue(boardGameWinScore.toString())) }
     val playerList = remember { mutableStateListOf<BoardGamePlayer>() }
     var showError1 by remember { mutableStateOf(false) }
     var popUp1 by remember { mutableStateOf(false) }
     var popUp2 by remember { mutableStateOf(false) }
     var popUp3 by remember { mutableStateOf(false) }
     var winner by remember { mutableStateOf("") }
+    var isFocused by remember { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
     LaunchedEffect(Unit) {
         if (playerList.isEmpty()) {
-            winScore = boardGameWinScore.toString()
+            winScore = TextFieldValue(boardGameWinScore.toString())
             playerList.addAll(boardGamePlayers)
             if (playerList.isEmpty()){
                 val newPlayer = BoardGamePlayer("", 0, 0)
                 playerList.add(newPlayer)
             }
+        }
+    }
+    LaunchedEffect(isFocused) {
+        if (isFocused) {
+            winScore = winScore.copy(
+                selection = TextRange(0, winScore.text.length)
+            )
         }
     }
     @Composable
@@ -2261,20 +2293,23 @@ fun BoardGames(navController: NavController, buttonColors: ButtonColors, boardGa
             ) {
                 OutlinedTextField(
                     value = winScore,
-                    onValueChange = { newText: String ->
+                    onValueChange = { newText ->
                         winScore = newText },
                     label = { Text("Za Pobjedu:") },
                     singleLine = true,
                     modifier = Modifier
                         .width(screenWidth / 3f)
+                        .focusRequester(focusRequester)
                         .onFocusChanged { focusState ->
+                            isFocused = focusState.isFocused
                             if (!focusState.isFocused) {
-                                val winScoreInt = winScore.toIntOrNull()
+                                val winScoreInt = winScore.text.toIntOrNull()
                                 if (winScoreInt == null) {
-                                    winScore = boardGameWinScore.toString()
+                                    winScore = TextFieldValue(boardGameWinScore.toString())
                                     showError1 = true
                                 } else {
-                                    saveWinScore(winScore.toInt())
+                                    saveWinScore(winScoreInt)
+                                    showError1 = false
                                 }
                             }
                         }
