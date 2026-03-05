@@ -100,5 +100,8 @@ data class Preference<T>(
         val DARTS_CURRENT_PLAYER = Preference(intPreferencesKey("dartsCurrentPlayer"), 0)
         val BOARD_GAME_PLAYERS = Preference(stringPreferencesKey("boardGamePlayers"), "")
         val BOARD_GAME_WIN_SCORE = Preference(intPreferencesKey("boardGameWinScore"), 0)
+        val GRAD_DRZAVA_SCORE = Preference(intPreferencesKey("gradDrzavaScore"), 0)
+        val GRAD_DRZAVA_CATEGORY_LIST = Preference(stringPreferencesKey("gradDrzavaCategoryList"), "")
+        val GRAD_DRZAVA_CURRENT_LETTER = Preference(stringPreferencesKey("gradDrzavaCurrentLetter"), "A")
     }
 }

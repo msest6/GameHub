@@ -108,6 +108,8 @@ import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
+import kotlin.collections.filter
+import kotlin.collections.map
 import kotlin.math.atan2
 import kotlin.math.cos
 import kotlin.math.sin
@@ -190,6 +192,31 @@ class MainActivity : ComponentActivity() {
 
             LaunchedEffect(Unit) {
                 boardGameWinScore = Settings(context).get(Preference.BOARD_GAME_WIN_SCORE)
+            }
+
+            val gradDrzavaCategoriesList = remember { mutableStateListOf<String>() }
+
+            LaunchedEffect(Unit) {
+                context.dataStore.data
+                    .map { prefs ->
+                        prefs[Preference.GRAD_DRZAVA_CATEGORY_LIST.key]?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
+                    }
+                    .collect { list ->
+                        gradDrzavaCategoriesList.clear()
+                        gradDrzavaCategoriesList.addAll(list)
+                    }
+            }
+
+            var gradDrzavaScore by remember { mutableIntStateOf(0) }
+
+            LaunchedEffect(Unit) {
+                gradDrzavaScore = Settings(context).get(Preference.GRAD_DRZAVA_SCORE)
+            }
+
+            var gradDrzavaCurrentLetter by remember { mutableStateOf("A") }
+
+            LaunchedEffect(Unit) {
+                gradDrzavaCurrentLetter = Settings(context).get(Preference.GRAD_DRZAVA_CURRENT_LETTER)
             }
 
             GameHubTheme(themeMode) {
@@ -409,6 +436,60 @@ class MainActivity : ComponentActivity() {
                             }
                         )
                     }
+                    composable("gradDrzavaMenu") {
+                        GameScaffold(
+                            navController,
+                            buttonColors,
+                            title = "Država Grad",
+                            onArrowClick = "home",
+                            content = { GradDrzavaMenu(navController, buttonColors) }
+                        )
+                    }
+                    composable("gradDrzavaNewGame") {
+                        GameScaffold(
+                            navController,
+                            buttonColors,
+                            title = "Država Grad",
+                            onArrowClick = "gradDrzavaMenu",
+                            content = { GradDrzavaNewGame(navController, buttonColors,
+                                onButtonPress = { newGradDrzavaCategoriesList: List<String> ->
+                                    gradDrzavaCategoriesList.clear()
+                                    gradDrzavaCategoriesList.addAll(newGradDrzavaCategoriesList)
+                                    scope.launch {
+                                        context.dataStore.edit { prefs ->
+                                            prefs[Preference.GRAD_DRZAVA_CATEGORY_LIST.key] = gradDrzavaCategoriesList.joinToString(",")
+                                        }
+                                    }
+                                })
+                            }
+                        )
+                    }
+                    composable("gradDrzava") {
+                        GameScaffold(
+                            navController,
+                            buttonColors,
+                            title = "Grad Država",
+                            onArrowClick = "gradDrzavaMenu",
+                            content = { GradDrzava(navController, buttonColors, gradDrzavaScore, gradDrzavaCategoriesList, gradDrzavaCurrentLetter,
+                                saveScore = { score: Int ->
+                                    gradDrzavaScore = score
+                                    scope.launch {
+                                        context.dataStore.edit { prefs ->
+                                            prefs[Preference.GRAD_DRZAVA_SCORE.key] = score
+                                        }
+                                    }
+                                },
+                                saveCurrentLetter = { letter ->
+                                    gradDrzavaCurrentLetter = letter
+                                    scope.launch{
+                                        context.dataStore.edit { prefs ->
+                                            prefs[Preference.GRAD_DRZAVA_CURRENT_LETTER.key] = letter
+                                        }
+                                    }
+                                })
+                            }
+                        )
+                    }
                 }
             }
         }
@@ -463,6 +544,18 @@ fun HomeScreen(navController: NavController, buttonColors: ButtonColors) {
             colors = buttonColors
         ) {
             Text(text = "Društvene Igre",
+                fontSize = (screenWidth.value * 0.08f).sp)
+        }
+
+        Button(
+            onClick = { navController.navigate("gradDrzavaMenu") },
+            modifier = Modifier
+                .padding(16.dp)
+                .width(screenWidth / 1.1f)
+                .height(screenWidth / 4),
+            colors = buttonColors
+        ) {
+            Text(text = "Država Grad",
                 fontSize = (screenWidth.value * 0.08f).sp)
         }
 
@@ -2237,37 +2330,6 @@ fun BoardGames(navController: NavController, buttonColors: ButtonColors, boardGa
             )
         }
     }
-    @Composable
-    fun ScoreCard(
-        score: Int,
-        winNum: Int
-    ) {
-        Box(
-            modifier = Modifier
-                .width(screenWidth / 8)
-                .padding(12.dp)
-        ) {
-
-            // Floating-style label
-            Text(
-                text = "Pobjede: $winNum",
-                style = MaterialTheme.typography.labelSmall,
-                modifier = Modifier
-                    .align(Alignment.TopStart)
-                    .offset(y = (-10).dp)
-                    .background(MaterialTheme.colorScheme.background)
-                    .padding(horizontal = 2.dp)
-            )
-
-            // Score
-            Text(
-                text = score.toString(),
-                style = MaterialTheme.typography.headlineLarge,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.align(Alignment.Center)
-            )
-        }
-    }
     val focusManager = LocalFocusManager.current
     Box(
         modifier = Modifier
@@ -2692,6 +2754,599 @@ fun BoardGames(navController: NavController, buttonColors: ButtonColors, boardGa
                                     savePlayers(playerList)
                                     saveWinScore(0)
                                     navController.navigate("boardGames")
+                                },
+                                modifier = Modifier
+                                    .width(screenWidth / 4)
+                                    .height(screenWidth / 6),
+                                colors = buttonColors
+                            ) {
+                                Text(
+                                    text = "Da",
+                                    fontSize = (screenWidth.value * 0.06f).sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+fun GradDrzavaMenu(navController: NavController, buttonColors: ButtonColors){
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp.dp
+    Column(
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxSize()
+    ){
+        Button(
+            onClick = {navController.navigate("gradDrzavaNewGame")},
+            modifier = Modifier
+                .padding(8.dp)
+                .width(screenWidth / 1.1f),
+            colors = buttonColors
+        ) {
+            Text(
+                text = "Nova Igra",
+                fontSize = (screenWidth.value * 0.08f).sp,
+                modifier = Modifier.padding(16.dp)
+            )
+        }
+        Button(
+            onClick = {navController.navigate("gradDrzava")},
+            modifier = Modifier
+                .padding(8.dp)
+                .width(screenWidth / 1.1f),
+            colors = buttonColors
+        ) {
+            Text(
+                text = "Nastavi Igru",
+                fontSize = (screenWidth.value * 0.08f).sp,
+                modifier = Modifier.padding(16.dp)
+            )
+        }
+    }
+}
+
+@Composable
+fun GradDrzavaNewGame(navController: NavController, buttonColors: ButtonColors, onButtonPress: (List<String>) -> Unit){
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp.dp
+
+    val categoriesList = remember { mutableStateListOf("") }
+    var showError1 by remember { mutableStateOf(false) }
+    val focusManager = LocalFocusManager.current
+    var expanded by remember { mutableStateOf(false) }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(10.dp)
+            .pointerInput(Unit){
+                detectTapGestures {
+                    focusManager.clearFocus()
+                }
+            }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ){
+                Text(
+                    text = "Unesite imena kategorija",
+                    fontSize = 20.sp,
+                    fontWeight = FontWeight.Bold
+                )
+                ElevatedButton(
+                    colors = buttonColors,
+                    onClick = {
+                        categoriesList.clear()
+                        categoriesList.add("")
+                    }
+                ) {
+                    Text("Reset")
+                }
+            }
+            AnimatedVisibility(
+                visible = showError1,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(12.dp)
+                    ) {
+                        Text(
+                            text = "⚠️ Unesite barem jednu kategoriju!",
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TextButton(onClick = { showError1 = false }) {
+                            Text("OK", color = MaterialTheme.colorScheme.onErrorContainer)
+                        }
+                    }
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+
+            LazyColumn(
+                modifier = Modifier.fillMaxHeight(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(categoriesList.size, key = { index -> index }) { index ->
+                    OutlinedTextField(
+                        value = categoriesList[index],
+                        onValueChange = { newText ->
+                            categoriesList[index] = newText
+                            if (index == categoriesList.lastIndex && newText.isNotBlank()) {
+                                categoriesList.add("")
+                            }
+
+                            if (newText.isBlank() && index != categoriesList.lastIndex) {
+                                categoriesList.removeAt(index)
+                            }
+                        },
+                        label = { Text("Kategorija ${index + 1}") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            }
+        }
+        ElevatedButton(
+            modifier = Modifier.align(Alignment.BottomEnd),
+            colors = buttonColors,
+            onClick = {
+                if (categoriesList.any { it.isNotBlank() }) {
+                    onButtonPress(categoriesList
+                        .map {it.trim()}
+                        .filter { it.isNotBlank() })
+                    navController.navigate("gradDrzava")
+                } else {
+                    showError1 = true
+                }
+            }
+        ) {
+            Text("Pokreni igru")
+        }
+    }
+    LaunchedEffect(showError1) {
+        if (showError1) {
+            delay(3000)
+            showError1 = false
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun GradDrzava(navController: NavController, buttonColors: ButtonColors, gradDrzavaScore: Int, gradDrzavaCategoriesList: List<String>, gradDrzavaCurrentLetter: String, saveScore: (Int) -> Unit, saveCurrentLetter: (String) -> Unit){
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp.dp
+    var score by remember { mutableIntStateOf(gradDrzavaScore) }
+    val scores = remember(gradDrzavaCategoriesList.size) {
+        MutableList(gradDrzavaCategoriesList.size) { 0 }.toMutableStateList()
+    }
+    val possibleScores = remember { mutableStateListOf<Int>(0, 5, 10, 15) }
+    val odgovori = remember(gradDrzavaCategoriesList.size) {
+        MutableList(gradDrzavaCategoriesList.size) { gradDrzavaCurrentLetter }.toMutableStateList()
+    }
+    var trenutnoSlovo by remember { mutableStateOf(gradDrzavaCurrentLetter) }
+    val abeceda = listOf<String>(
+        "A", "B", "C", "Č", "Ć", "D", "Dž", "Đ", "E", "F", "G", "H", "I", "J", "K", "L", "Lj", "M", "N", "Nj", "O", "P", "R", "S", "Š", "T", "U", "V", "Z", "Ž"
+    )
+    var showError1 by remember { mutableStateOf(false) }
+    var popUp1 by remember { mutableStateOf(false) }
+    var popUp2 by remember { mutableStateOf(false) }
+    var popUp3 by remember { mutableStateOf(false) }
+    val focusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    LaunchedEffect(trenutnoSlovo) {
+        odgovori.indices.forEach { odgovori[it] = trenutnoSlovo }
+    }
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+            .pointerInput(Unit){
+                detectTapGestures {
+                    focusManager.clearFocus()
+                }
+            }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(16.dp)
+                    .background(MaterialTheme.colorScheme.background)
+            ) {
+                OutlinedTextField(
+                    value = trenutnoSlovo,
+                    onValueChange = { newText ->
+                        trenutnoSlovo = newText },
+                    label = { Text("Trenutno slovo:") },
+                    singleLine = true,
+                    modifier = Modifier
+                        .width(screenWidth / 3f)
+                        .focusRequester(focusRequester)
+                        .onFocusChanged { focusState ->
+                            if (!focusState.isFocused) {
+                                if (trenutnoSlovo !in abeceda) {
+                                    trenutnoSlovo = gradDrzavaCurrentLetter
+                                    showError1 = true
+                                } else {
+                                    saveCurrentLetter(trenutnoSlovo)
+                                    showError1 = false
+                                }
+                            }
+                        }
+                )
+                Spacer(modifier = Modifier.width(16.dp))
+                Box(
+                    modifier = Modifier
+                        .width(screenWidth / 4)
+                        .border(
+                            width = 1.dp,
+                            color = MaterialTheme.colorScheme.primary,
+                            shape = RoundedCornerShape(12.dp)
+                        )
+                        .padding(12.dp)
+                        .pointerInput(Unit){
+                            detectTapGestures {
+                                popUp3 = true
+                            }
+                        }
+                ) {
+                    Text(
+                        text = "Bodovi:",
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .offset(y = (-10).dp)
+                            .background(MaterialTheme.colorScheme.background)
+                            .padding(horizontal = 2.dp)
+                    )
+
+                    Text(
+                        text = score.toString(),
+                        style = MaterialTheme.typography.headlineLarge,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
+                Spacer(modifier = Modifier.width(16.dp))
+                Button(
+                    onClick = {
+                        popUp1 = true },
+                    modifier = Modifier.width(screenWidth / 6).height(screenWidth / 6),
+                    shape = CircleShape
+                ) {
+                    Text(text = "A",
+                        fontSize = (screenWidth.value * 0.08f).sp)
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ){
+                Text(
+                    text = "Unesite svoje odgovore",
+                    fontSize = (screenWidth.value * 0.05f).sp,
+                    fontWeight = FontWeight.Bold
+                )
+                ElevatedButton(
+                    colors = buttonColors,
+                    onClick = {
+                        popUp2 = true
+                    }
+                ) {
+                    Text(text = "Reset",
+                        fontSize = (screenWidth.value * 0.05f).sp)
+                }
+            }
+            Spacer(modifier = Modifier.height(16.dp))
+            AnimatedVisibility(
+                visible = showError1,
+                enter = fadeIn() + expandVertically(),
+                exit = fadeOut() + shrinkVertically()
+            ) {
+                Card(
+                    colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.errorContainer),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 8.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.padding(12.dp)
+                    ) {
+                        Text(
+                            text = "⚠️ Unos u polje za slovo mora biti veliko slovo abecede!",
+                            color = MaterialTheme.colorScheme.onErrorContainer,
+                            modifier = Modifier.weight(1f)
+                        )
+                        TextButton(onClick = { showError1 = false }) {
+                            Text("OK", color = MaterialTheme.colorScheme.onErrorContainer)
+                        }
+                    }
+                }
+            }
+            LazyColumn(
+                modifier = Modifier.fillMaxHeight(),
+                verticalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                items(gradDrzavaCategoriesList.size, key = { index -> index }) { index ->
+                    var expanded by remember { mutableStateOf(false) }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceEvenly
+                    ) {
+                        OutlinedTextField(
+                            value = odgovori[index],
+                            onValueChange = { newText: String ->
+                                odgovori[index] = newText
+                            },
+                            label = { Text(gradDrzavaCategoriesList[index]) },
+                            singleLine = true,
+                            modifier = Modifier.width(screenWidth / 1.5f)
+                        )
+                        Spacer(modifier = Modifier.width(16.dp))
+                        ExposedDropdownMenuBox(
+                            expanded = expanded,
+                            onExpandedChange = { expanded = !expanded }
+                        ) {
+                            OutlinedTextField(
+                                value = scores[index].toString(),
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text("Bodovi:") },
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
+                                },
+                                modifier = Modifier
+                                    .menuAnchor()
+                                    .width(screenWidth / 3f)
+                            )
+
+                            ExposedDropdownMenu(
+                                expanded = expanded,
+                                onDismissRequest = { expanded = false }
+                            ) {
+                                possibleScores.forEach { score ->
+                                    DropdownMenuItem(
+                                        text = { Text(score.toString()) },
+                                        onClick = {
+                                            scores[index] = score
+                                            expanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        ElevatedButton(
+            modifier = Modifier.align(Alignment.BottomEnd),
+            colors = buttonColors,
+            onClick = {
+                for (i in scores) {
+                    score += i
+                }
+                scores.indices.forEach { scores[it] = 0 }
+                odgovori.indices.forEach { odgovori[it] = trenutnoSlovo }
+                saveScore(score)
+            }
+        ) {
+            Text("Spremi")
+        }
+    }
+    LaunchedEffect(showError1) {
+        if (showError1) {
+            delay(10000)
+            showError1 = false
+        }
+    }
+    if (popUp1) {
+        Dialog(
+            onDismissRequest = {  }
+        ) {
+            val randomLetter = abeceda.random()
+            AnimatedVisibility(
+                visible = popUp1,
+                enter = fadeIn(animationSpec = tween(2000)) +
+                        scaleIn(initialScale = 0.8f, animationSpec = tween(2000)),
+                exit = fadeOut() + scaleOut()
+            ) {
+
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    tonalElevation = 8.dp
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .padding(24.dp)
+                    ) {
+                        Text(
+                            text = randomLetter,
+                            fontSize = (screenWidth.value * 0.08f).sp,
+                            modifier = Modifier.padding(bottom = 16.dp)
+                        )
+
+                        Button(
+                            onClick = {
+                                trenutnoSlovo = randomLetter
+                                saveCurrentLetter(randomLetter)
+                                scores.indices.forEach { scores[it] = 0 }
+                                popUp1 = false
+                            },
+                            modifier = Modifier
+                                .width(screenWidth / 2)
+                                .height(screenWidth / 6),
+                            colors = buttonColors
+                        ) {
+                            Text(
+                                text = "OK",
+                                fontSize = (screenWidth.value * 0.06f).sp
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if (popUp2) {
+        Dialog(
+            onDismissRequest = { popUp2 = false }
+        ) {
+
+            AnimatedVisibility(
+                visible = popUp2,
+                enter = fadeIn(animationSpec = tween(2000)) +
+                        scaleIn(initialScale = 0.8f, animationSpec = tween(2000)),
+                exit = fadeOut() + scaleOut()
+            ) {
+
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    tonalElevation = 8.dp
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .padding(24.dp)
+                    ) {
+
+                        Text(
+                            text = "Jeste li sigurni da želite resetirati?",
+                            fontSize = (screenWidth.value * 0.08f).sp,
+                            modifier = Modifier.padding(bottom = 16.dp).fillMaxWidth(),
+                            textAlign = TextAlign.Center,
+                            style = TextStyle(
+                                lineHeight = (screenWidth.value * 0.08f).sp
+                            )
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ){
+                            Button(
+                                onClick = {
+                                    popUp2 = false
+                                },
+                                modifier = Modifier
+                                    .width(screenWidth / 4)
+                                    .height(screenWidth / 6),
+                                colors = buttonColors
+                            ) {
+                                Text(
+                                    text = "Ne",
+                                    fontSize = (screenWidth.value * 0.06f).sp
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(screenWidth / 10))
+                            Button(
+                                onClick = {
+                                    popUp2 = false
+                                    saveCurrentLetter("A")
+                                    saveScore(score)
+                                    trenutnoSlovo = "A"
+                                    scores.indices.forEach { scores[it] = 0 }
+                                    odgovori.indices.forEach { odgovori[it] = trenutnoSlovo }
+                                },
+                                modifier = Modifier
+                                    .width(screenWidth / 4)
+                                    .height(screenWidth / 6),
+                                colors = buttonColors
+                            ) {
+                                Text(
+                                    text = "Da",
+                                    fontSize = (screenWidth.value * 0.06f).sp
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if (popUp3) {
+        Dialog(
+            onDismissRequest = { popUp3 = false }
+        ) {
+
+            AnimatedVisibility(
+                visible = popUp3,
+                enter = fadeIn(animationSpec = tween(2000)) +
+                        scaleIn(initialScale = 0.8f, animationSpec = tween(2000)),
+                exit = fadeOut() + scaleOut()
+            ) {
+
+                Surface(
+                    shape = RoundedCornerShape(20.dp),
+                    tonalElevation = 8.dp
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        modifier = Modifier
+                            .padding(24.dp)
+                    ) {
+
+                        Text(
+                            text = "Jeste li sigurni da želite resetirati svoje bodove?",
+                            fontSize = (screenWidth.value * 0.08f).sp,
+                            modifier = Modifier.padding(bottom = 16.dp).fillMaxWidth(),
+                            textAlign = TextAlign.Center,
+                            style = TextStyle(
+                                lineHeight = (screenWidth.value * 0.08f).sp
+                            )
+                        )
+                        Row(
+                            horizontalArrangement = Arrangement.SpaceEvenly
+                        ){
+                            Button(
+                                onClick = {
+                                    popUp3 = false
+                                },
+                                modifier = Modifier
+                                    .width(screenWidth / 4)
+                                    .height(screenWidth / 6),
+                                colors = buttonColors
+                            ) {
+                                Text(
+                                    text = "Ne",
+                                    fontSize = (screenWidth.value * 0.06f).sp
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(screenWidth / 10))
+                            Button(
+                                onClick = {
+                                    popUp3 = false
+                                    saveScore(0)
+                                    score = 0
                                 },
                                 modifier = Modifier
                                     .width(screenWidth / 4)
