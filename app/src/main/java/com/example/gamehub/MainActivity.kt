@@ -1,5 +1,6 @@
 package com.example.gamehub
 
+import android.content.pm.ActivityInfo
 import android.graphics.Paint
 import android.os.Bundle
 import android.util.Log
@@ -119,6 +120,7 @@ import kotlin.text.isEmpty
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_PORTRAIT
         enableEdgeToEdge()
         setContent {
             val context = LocalContext.current
@@ -2986,7 +2988,7 @@ fun GradDrzava(navController: NavController, buttonColors: ButtonColors, gradDrz
                     label = { Text("Trenutno slovo:") },
                     singleLine = true,
                     modifier = Modifier
-                        .width(screenWidth / 3f)
+                        .width(screenWidth / 4f)
                         .focusRequester(focusRequester)
                         .onFocusChanged { focusState ->
                             if (!focusState.isFocused) {
