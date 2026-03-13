@@ -39,6 +39,13 @@ data class BoardGamePlayer(
 ){
 
 }
+@Serializable
+data class BelaRunda (
+    var miScore: Int,
+    var viScore: Int,
+    var miZvanja: Int,
+    var viZvanja: Int
+)
 
 class Settings(val context: Context) {
     suspend fun <T> get(preference: Preference<T>): T{
@@ -103,5 +110,9 @@ data class Preference<T>(
         val GRAD_DRZAVA_SCORE = Preference(intPreferencesKey("gradDrzavaScore"), 0)
         val GRAD_DRZAVA_CATEGORY_LIST = Preference(stringPreferencesKey("gradDrzavaCategoryList"), "")
         val GRAD_DRZAVA_CURRENT_LETTER = Preference(stringPreferencesKey("gradDrzavaCurrentLetter"), "A")
+        val BELA_DJELITELJ = Preference(stringPreferencesKey("belaDjelitelj"), "")
+        val BELA_RECORD = Preference(stringPreferencesKey("belaRecord"), "")
+        val BELA_PLAYER_LIST = Preference(stringPreferencesKey("belaPlayerList"), "")
+        val BELA_GAME_SCORE = Preference(intPreferencesKey("belaGameScore"), 0)
     }
 }

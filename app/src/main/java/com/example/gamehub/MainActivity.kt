@@ -127,14 +127,24 @@ class MainActivity : ComponentActivity() {
             val scope = rememberCoroutineScope()
 
             var themeMode by remember { mutableStateOf(ThemeMode.LIGHT) }
+            val dartsPlayersNames = remember { mutableStateListOf<String>() }
+            var dartsGame by remember { mutableStateOf("") }
+            var dartsDoubleIn by remember { mutableStateOf(false) }
+            var dartsDoubleOut by remember { mutableStateOf(true) }
+            val dartsGameMoves = remember { mutableStateListOf<DartThrow>() }
+            var dartsCurrentPlayer by remember { mutableIntStateOf(0) }
+            val inputStream = resources.openRawResource(R.raw.checkout_table)
+            val json = inputStream.bufferedReader().use { it.readText() }
+            val checkoutTable = Json.decodeFromString<List<CheckoutTable>>(json)
+            val boardGamePlayers = remember { mutableStateListOf<BoardGamePlayer>() }
+            var boardGameWinScore by remember { mutableIntStateOf(0) }
+            val gradDrzavaCategoriesList = remember { mutableStateListOf<String>() }
+            var gradDrzavaScore by remember { mutableIntStateOf(0) }
+            var gradDrzavaCurrentLetter by remember { mutableStateOf("A") }
+
 
             LaunchedEffect(Unit) {
                 themeMode = Settings(context).getThemeMode()
-            }
-
-            val dartsPlayersNames = remember { mutableStateListOf<String>() }
-
-            LaunchedEffect(Unit) {
                 context.dataStore.data
                     .map { prefs ->
                         prefs[Preference.DARTS_PLAYER_NAME_LIST.key]?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
@@ -143,62 +153,20 @@ class MainActivity : ComponentActivity() {
                         dartsPlayersNames.clear()
                         dartsPlayersNames.addAll(list)
                     }
-            }
 
-            var dartsGame by remember { mutableStateOf("") }
-
-            LaunchedEffect(Unit) {
-                    dartsGame = Settings(context).get(Preference.DARTS_ACTIVE_GAME)
-            }
-
-            var dartsDoubleIn by remember { mutableStateOf(false) }
-
-            LaunchedEffect(Unit) {
+                dartsGame = Settings(context).get(Preference.DARTS_ACTIVE_GAME)
                 dartsDoubleIn = Settings(context).get(Preference.DARTS_DOUBLE_IN)
-            }
-
-            var dartsDoubleOut by remember { mutableStateOf(true) }
-
-            LaunchedEffect(Unit) {
                 dartsDoubleOut = Settings(context).get(Preference.DARTS_DOUBLE_OUT)
-            }
-
-            val dartsGameMoves = remember { mutableStateListOf<DartThrow>() }
-
-            LaunchedEffect(Unit) {
-                val loaded = Settings(context).loadDartsGame()
-
+                val loadedDartsGame = Settings(context).loadDartsGame()
                 dartsGameMoves.clear()
-                dartsGameMoves.addAll(loaded)
-            }
-
-            var dartsCurrentPlayer by remember { mutableIntStateOf(0) }
-
-            LaunchedEffect(Unit) {
+                dartsGameMoves.addAll(loadedDartsGame)
                 dartsCurrentPlayer = Settings(context).get(Preference.DARTS_CURRENT_PLAYER)
-            }
 
-            val inputStream = resources.openRawResource(R.raw.checkout_table)
-            val json = inputStream.bufferedReader().use { it.readText() }
-            val checkoutTable = Json.decodeFromString<List<CheckoutTable>>(json)
-
-            val boardGamePlayers = remember { mutableStateListOf<BoardGamePlayer>() }
-
-            LaunchedEffect(Unit) {
-                val loaded = Settings(context).loadBoardGamePlayers()
+                val loadedGamePlayers = Settings(context).loadBoardGamePlayers()
                 boardGamePlayers.clear()
-                boardGamePlayers.addAll(loaded)
-            }
-
-            var boardGameWinScore by remember { mutableIntStateOf(0) }
-
-            LaunchedEffect(Unit) {
+                boardGamePlayers.addAll(loadedGamePlayers)
                 boardGameWinScore = Settings(context).get(Preference.BOARD_GAME_WIN_SCORE)
-            }
 
-            val gradDrzavaCategoriesList = remember { mutableStateListOf<String>() }
-
-            LaunchedEffect(Unit) {
                 context.dataStore.data
                     .map { prefs ->
                         prefs[Preference.GRAD_DRZAVA_CATEGORY_LIST.key]?.split(",")?.filter { it.isNotBlank() } ?: emptyList()
@@ -207,17 +175,7 @@ class MainActivity : ComponentActivity() {
                         gradDrzavaCategoriesList.clear()
                         gradDrzavaCategoriesList.addAll(list)
                     }
-            }
-
-            var gradDrzavaScore by remember { mutableIntStateOf(0) }
-
-            LaunchedEffect(Unit) {
                 gradDrzavaScore = Settings(context).get(Preference.GRAD_DRZAVA_SCORE)
-            }
-
-            var gradDrzavaCurrentLetter by remember { mutableStateOf("A") }
-
-            LaunchedEffect(Unit) {
                 gradDrzavaCurrentLetter = Settings(context).get(Preference.GRAD_DRZAVA_CURRENT_LETTER)
             }
 
@@ -424,7 +382,7 @@ class MainActivity : ComponentActivity() {
                                     boardGamePlayers.clear()
                                     boardGamePlayers.addAll(players)
                                     scope.launch {
-                                        val res = Settings(context).saveBoardGamePlayers(players)
+                                        Settings(context).saveBoardGamePlayers(players)
                                     }
                                 },
                                 saveWinScore = { score: Int ->
