@@ -1,5 +1,6 @@
 package com.example.gamehub.bela
 
+import android.R.attr.text
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,6 +40,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.gamehub.data.model.BelaMode
@@ -105,6 +107,7 @@ private fun BelaNameField(initialValue: String, label: String, onValueChange: (S
     val screenWidth = configuration.screenWidthDp.dp
     var fieldValue by remember { mutableStateOf(TextFieldValue(initialValue)) }
     var isFocused by remember { mutableStateOf(false) }
+    val maxChar = 8
 
     LaunchedEffect(isFocused) {
         if (isFocused) {
@@ -115,10 +118,19 @@ private fun BelaNameField(initialValue: String, label: String, onValueChange: (S
     OutlinedTextField(
         value = fieldValue,
         onValueChange = { newValue ->
-            fieldValue = newValue
-            onValueChange(newValue.text)
+            if (newValue.text.length <= maxChar){
+                fieldValue = newValue
+                onValueChange(newValue.text)
+            }
         },
         label = { Text(label) },
+        supportingText = {
+            Text(
+                text = "${fieldValue.text.length} / $maxChar",
+                textAlign = TextAlign.End,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
         singleLine = true,
         modifier = Modifier
             .width(screenWidth / 3)
@@ -199,7 +211,7 @@ fun BelaScoreboard(viewModel: BelaViewModel) {
             ) {
                 Text(
                     text = viewModel.columnLabel(col),
-                    fontSize = (screenWidth.value * 0.05f).sp,
+                    fontSize = if (viewModel.mode != BelaMode.THREE) (screenWidth.value * 0.07f).sp else (screenWidth.value * 0.04f).sp,
                     fontWeight = FontWeight.Bold,
                     color = if (viewModel.winnerColumn == col) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary
                 )

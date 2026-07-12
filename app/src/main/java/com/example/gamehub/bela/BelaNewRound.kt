@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonColors
@@ -33,6 +34,8 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
@@ -123,16 +126,9 @@ fun BelaNewRound(navController: NavController, buttonColors: ButtonColors, viewM
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Text(
-                text = "Nova partija",
-                fontSize = (screenWidth.value * 0.07f).sp,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.tertiary,
-                modifier = Modifier.padding(bottom = 24.dp)
-            )
             Spacer(modifier = Modifier.height(8.dp))
             Text(
-                text = "Zvao",
+                text = "Zove",
                 fontSize = (screenWidth.value * 0.07f).sp,
                 fontWeight = FontWeight.Bold,
                 color = MaterialTheme.colorScheme.tertiary,
@@ -162,7 +158,10 @@ fun BelaNewRound(navController: NavController, buttonColors: ButtonColors, viewM
                             onValueChange = { updateScore(col, it) },
                             label = { Text("Bodovi") },
                             singleLine = true,
-                            modifier = Modifier.width(screenWidth / (mode.columnCount + 1))
+                            modifier = Modifier.width(screenWidth / (mode.columnCount + 1)),
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Number
+                            )
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         OutlinedTextField(
@@ -170,7 +169,17 @@ fun BelaNewRound(navController: NavController, buttonColors: ButtonColors, viewM
                             onValueChange = { updateZvanja(col, it) },
                             label = { Text("Zvanja") },
                             singleLine = true,
-                            modifier = Modifier.width(screenWidth / (mode.columnCount + 1))
+                            modifier = Modifier.width(screenWidth / (mode.columnCount + 1)),
+                            keyboardOptions = KeyboardOptions(
+                                keyboardType = KeyboardType.Number
+                            ),
+                            supportingText = {
+                                Text(
+                                    text = "Ukupno: ${(if (scoreFields.value[col] == "") 0 else scoreFields.value[col].toInt()) + (if (zvanjaFields.value[col] == "") 0 else zvanjaFields.value[col].toInt())}",
+                                    textAlign = TextAlign.End,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         Row(
@@ -314,7 +323,8 @@ fun BelaNewRound(navController: NavController, buttonColors: ButtonColors, viewM
                     modifier = Modifier
                         .width(screenWidth / 3)
                         .height(screenWidth / 7),
-                    colors = buttonColors
+                    colors = buttonColors,
+                    contentPadding = PaddingValues(2.dp)
                 ) {
                     Text(text = "Odustani", fontSize = (screenWidth.value * 0.05f).sp)
                 }
@@ -340,7 +350,8 @@ fun BelaNewRound(navController: NavController, buttonColors: ButtonColors, viewM
                     modifier = Modifier
                         .width(screenWidth / 3)
                         .height(screenWidth / 7),
-                    colors = buttonColors
+                    colors = buttonColors,
+                    contentPadding = PaddingValues(2.dp)
                 ) {
                     Text(text = "Spremi", fontSize = (screenWidth.value * 0.05f).sp)
                 }

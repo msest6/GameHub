@@ -4,6 +4,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -125,7 +126,8 @@ fun BelaNewGame(navController: NavController, buttonColors: ButtonColors, viewMo
                     modifier = Modifier
                         .width(screenWidth / 3)
                         .height(screenWidth / 7),
-                    colors = buttonColors
+                    colors = buttonColors,
+                    contentPadding = PaddingValues(2.dp)
                 ) {
                     Text(text = "Odustani", fontSize = (screenWidth.value * 0.05f).sp)
                 }
@@ -140,7 +142,8 @@ fun BelaNewGame(navController: NavController, buttonColors: ButtonColors, viewMo
                     modifier = Modifier
                         .width(screenWidth / 3)
                         .height(screenWidth / 7),
-                    colors = buttonColors
+                    colors = buttonColors,
+                    contentPadding = PaddingValues(2.dp)
                 ) {
                     Text(text = "Nastavi", fontSize = (screenWidth.value * 0.05f).sp)
                 }
