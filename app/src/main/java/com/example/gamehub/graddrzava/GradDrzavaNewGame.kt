@@ -148,6 +148,8 @@ fun GradDrzavaNewGame(navController: NavController, buttonColors: ButtonColors, 
                             .map { it.trim() }
                             .filter { it.isNotBlank() }
                     )
+                    viewModel.resetScore()
+                    viewModel.resetToLetterA()
                     navController.navigate("gradDrzava")
                 } else {
                     showError1 = true

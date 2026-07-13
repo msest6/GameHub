@@ -14,6 +14,7 @@ import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -47,6 +48,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -55,6 +57,7 @@ import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.text.TextRange
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -62,6 +65,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.navigation.NavController
+import androidx.compose.ui.text.input.TextFieldValue
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -79,13 +83,16 @@ fun GradDrzava(
 
     // Tekstualno polje za slovo je cisto UI stanje dok se tipka -
     // potvrduje se tek na blur, preko viewModel.trySetCurrentLetter().
-    var letterField by remember(viewModel.isLoaded) { mutableStateOf(viewModel.currentLetter) }
+    var letterField by remember(viewModel.isLoaded) {
+        mutableStateOf(TextFieldValue(viewModel.currentLetter))
+    }
     var showError1 by remember { mutableStateOf(false) }
     var popUp1 by remember { mutableStateOf(false) }
     var popUp2 by remember { mutableStateOf(false) }
     var popUp3 by remember { mutableStateOf(false) }
     val focusRequester = remember { FocusRequester() }
     val focusManager = LocalFocusManager.current
+    var isLetterFieldFocused by remember { mutableStateOf(false) }
 
     Box(
         modifier = Modifier
@@ -120,9 +127,10 @@ fun GradDrzava(
                         .width(screenWidth / 4f)
                         .focusRequester(focusRequester)
                         .onFocusChanged { focusState ->
+                            isLetterFieldFocused = focusState.isFocused
                             if (!focusState.isFocused) {
-                                if (!viewModel.trySetCurrentLetter(letterField)) {
-                                    letterField = viewModel.currentLetter
+                                if (!viewModel.trySetCurrentLetter(letterField.text)) {
+                                    letterField = TextFieldValue(viewModel.currentLetter)
                                     showError1 = true
                                 } else {
                                     showError1 = false
@@ -130,6 +138,12 @@ fun GradDrzava(
                             }
                         }
                 )
+                LaunchedEffect(isLetterFieldFocused) {
+                    if (isLetterFieldFocused) {
+                        withFrameNanos { } // pricekaj da Compose odradi svoj default cursor-placement
+                        letterField = letterField.copy(selection = TextRange(0, letterField.text.length))
+                    }
+                }
                 Spacer(modifier = Modifier.width(16.dp))
                 Box(
                     modifier = Modifier
@@ -169,7 +183,8 @@ fun GradDrzava(
                         popUp1 = true
                     },
                     modifier = Modifier.width(screenWidth / 6).height(screenWidth / 6),
-                    shape = CircleShape
+                    shape = CircleShape,
+                    contentPadding = PaddingValues(2.dp)
                 ) {
                     Text(
                         text = "A",
@@ -282,14 +297,19 @@ fun GradDrzava(
                         }
                     }
                 }
+                item {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Button(
+                        colors = buttonColors,
+                        onClick = { viewModel.submitRound() }
+                    ){
+                        Text(
+                            text = "Spremi",
+                            fontSize = (screenWidth.value * 0.05f).sp
+                        )
+                    }
+                }
             }
-        }
-        ElevatedButton(
-            modifier = Modifier.align(Alignment.BottomEnd),
-            colors = buttonColors,
-            onClick = { viewModel.submitRound() }
-        ) {
-            Text("Spremi")
         }
     }
     if (popUp1) {
@@ -322,7 +342,7 @@ fun GradDrzava(
                         Button(
                             onClick = {
                                 viewModel.confirmLetter(randomLetter)
-                                letterField = randomLetter
+                                letterField = TextFieldValue(randomLetter)
                                 popUp1 = false
                             },
                             modifier = Modifier
@@ -393,7 +413,7 @@ fun GradDrzava(
                                 onClick = {
                                     popUp2 = false
                                     viewModel.resetToLetterA()
-                                    letterField = "A"
+                                    letterField = TextFieldValue("A")
                                 },
                                 modifier = Modifier
                                     .width(screenWidth / 4)
