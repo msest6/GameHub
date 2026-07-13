@@ -60,6 +60,7 @@ fun BelaNewRound(navController: NavController, buttonColors: ButtonColors, viewM
     val zvanjaFields = remember(mode) { mutableStateOf(List(mode.columnCount) { "" }) }
     var showError by remember { mutableStateOf(false) }
     var showError2 by remember { mutableStateOf(false) }
+    var showError3 by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
     var zvaoIndex by remember(mode) { mutableStateOf<Int?>(null) }
     var belotConfirmIndex by remember(mode) { mutableStateOf<Int?>(null) }
@@ -352,6 +353,13 @@ fun BelaNewRound(navController: NavController, buttonColors: ButtonColors, viewM
                     color = MaterialTheme.colorScheme.error
                 )
             }
+            if (showError3) {
+                Spacer(modifier = Modifier.height(16.dp))
+                Text(
+                    text = "⚠️ Zbroj bodova bez zvanja može biti najviše 162!",
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
             LaunchedEffect(showError) {
                 if (showError) {
                     delay(10000)
@@ -362,6 +370,12 @@ fun BelaNewRound(navController: NavController, buttonColors: ButtonColors, viewM
                 if (showError2) {
                     delay(10000)
                     showError2 = false
+                }
+            }
+            LaunchedEffect(showError3) {
+                if (showError3) {
+                    delay(10000)
+                    showError3 = false
                 }
             }
 
@@ -390,6 +404,8 @@ fun BelaNewRound(navController: NavController, buttonColors: ButtonColors, viewM
                             showError = true
                         } else if (total != 162 && mode != BelaMode.TWO_CLOSED){
                             showError2 = true
+                        } else if (total > 162) {
+                            showError3 = true
                         }
                         else {
                             viewModel.addRound(
