@@ -41,6 +41,9 @@ import androidx.compose.ui.unit.sp
 import androidx.navigation.NavController
 import com.example.gamehub.data.model.BelaMode
 import kotlinx.coroutines.delay
+import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.text.input.TextFieldValue
+import androidx.compose.ui.text.TextRange
 
 /**
  * Ekran za unos rezultata jedne partije. Broj polja ovisi o viewModel.mode.columnCount.
@@ -139,6 +142,12 @@ fun BelaNewRound(navController: NavController, buttonColors: ButtonColors, viewM
                 modifier = Modifier.fillMaxWidth()
             ) {
                 for (col in 0 until mode.columnCount) {
+                    var scoreFieldValue by remember(mode, col) {
+                        mutableStateOf(TextFieldValue(text = scoreFields.value[col]))
+                    }
+                    var zvanjaFieldValue by remember(mode, col) {
+                        mutableStateOf(TextFieldValue(text = zvanjaFields.value[col]))
+                    }
                     Column(horizontalAlignment = Alignment.CenterHorizontally) {
                         RadioButton(
                             selected = zvaoIndex == col,
@@ -154,22 +163,50 @@ fun BelaNewRound(navController: NavController, buttonColors: ButtonColors, viewM
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         OutlinedTextField(
-                            value = scoreFields.value[col],
-                            onValueChange = { updateScore(col, it) },
+                            value = scoreFieldValue,
+                            onValueChange = { newValue ->
+                                val newText = newValue.text
+                                if (newText.isEmpty() || (newText.toIntOrNull() != null && newText.toInt() <= 162)) {
+                                    updateScore(col, newText)
+                                    scoreFieldValue = newValue
+                                } else if (newText.toIntOrNull() != null && newText.toInt() > 162) {
+                                    updateScore(col, "162")
+                                    scoreFieldValue = newValue.copy(text = "162")
+                                }
+                            },
                             label = { Text("Bodovi") },
                             singleLine = true,
-                            modifier = Modifier.width(screenWidth / (mode.columnCount + 1)),
+                            modifier = Modifier
+                                .width(screenWidth / (mode.columnCount + 1))
+                                .onFocusChanged { focusState ->
+                                    if (focusState.isFocused) {
+                                        scoreFieldValue = scoreFieldValue.copy(
+                                            selection = TextRange(0, scoreFieldValue.text.length)
+                                        )
+                                    }
+                                },
                             keyboardOptions = KeyboardOptions(
                                 keyboardType = KeyboardType.Number
                             )
                         )
                         Spacer(modifier = Modifier.height(8.dp))
                         OutlinedTextField(
-                            value = zvanjaFields.value[col],
-                            onValueChange = { updateZvanja(col, it) },
+                            value = zvanjaFieldValue,
+                            onValueChange = { newValue ->
+                                updateZvanja(col, newValue.text)
+                                zvanjaFieldValue = newValue
+                            },
                             label = { Text("Zvanja") },
                             singleLine = true,
-                            modifier = Modifier.width(screenWidth / (mode.columnCount + 1)),
+                            modifier = Modifier
+                                .width(screenWidth / (mode.columnCount + 1))
+                                .onFocusChanged { focusState ->
+                                    if (focusState.isFocused) {
+                                        zvanjaFieldValue = zvanjaFieldValue.copy(
+                                            selection = TextRange(0, zvanjaFieldValue.text.length)
+                                        )
+                                    }
+                                },
                             keyboardOptions = KeyboardOptions(
                                 keyboardType = KeyboardType.Number
                             ),
@@ -280,6 +317,22 @@ fun BelaNewRound(navController: NavController, buttonColors: ButtonColors, viewM
                             ) {
                                 Text(text = "Belot", fontSize = (screenWidth.value * 0.05f).sp)
                             }
+                        }
+                    }
+                    LaunchedEffect(scoreFields.value[col]) {
+                        if (scoreFieldValue.text != scoreFields.value[col]) {
+                            scoreFieldValue = scoreFieldValue.copy(
+                                text = scoreFields.value[col],
+                                selection = TextRange(scoreFields.value[col].length)
+                            )
+                        }
+                    }
+                    LaunchedEffect(zvanjaFields.value[col]) {
+                        if (zvanjaFieldValue.text != zvanjaFields.value[col]) {
+                            zvanjaFieldValue = zvanjaFieldValue.copy(
+                                text = zvanjaFields.value[col],
+                                selection = TextRange(zvanjaFields.value[col].length)
+                            )
                         }
                     }
                 }
