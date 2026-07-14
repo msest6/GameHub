@@ -50,7 +50,7 @@ fun BelaNewGame(navController: NavController, buttonColors: ButtonColors, viewMo
 
     val labels = when (selectedMode) {
         BelaMode.FOUR -> listOf("Ja", "Lijevi", "Suigrač", "Desni")
-        BelaMode.THREE -> listOf("Ja", "Lijevi", "Desni")
+        BelaMode.THREE -> listOf("Ja", "Desni", "Lijevi")
         BelaMode.TWO_OPEN, BelaMode.TWO_CLOSED -> listOf("Ja", "Protivnik")
     }
 
@@ -135,6 +135,11 @@ fun BelaNewGame(navController: NavController, buttonColors: ButtonColors, viewMo
                     onClick = {
                         val playerNames = names.mapIndexed { i, n ->
                             n.trim().ifBlank { labels.getOrElse(i) { "Igrač ${i + 1}" } }
+                        }.toMutableList()
+                        if (selectedMode == BelaMode.FOUR) {
+                            val tmp = playerNames[1]
+                            playerNames[1] = playerNames[3]
+                            playerNames[3] = tmp
                         }
                         viewModel.startNewGame(selectedMode, playerNames, selectedTargetScore)
                         navController.navigate("bela")

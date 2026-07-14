@@ -65,21 +65,6 @@ fun BelaNewRound(navController: NavController, buttonColors: ButtonColors, viewM
     var zvaoIndex by remember(mode) { mutableStateOf<Int?>(null) }
     var belotConfirmIndex by remember(mode) { mutableStateOf<Int?>(null) }
 
-    fun updateScore(index: Int, newValue: String) {
-        if (newValue.isNotEmpty() && !newValue.all { it.isDigit() }) return
-        val updated = scoreFields.value.toMutableList()
-        updated[index] = newValue
-        if (mode.supportsAutoFill && mode.columnCount == 2) {
-            val entered = newValue.toIntOrNull()
-            val otherIndex = 1 - index
-            if (entered != null) {
-                updated[otherIndex] = viewModel.autoFillPartner(entered)?.toString() ?: ""
-            }
-        }
-        scoreFields.value = updated
-        showError = false
-    }
-
     fun updateZvanja(index: Int, newValue: String) {
         if (newValue.isNotEmpty() && !newValue.all { it.isDigit() }) return
         val updated = zvanjaFields.value.toMutableList()
@@ -95,6 +80,40 @@ fun BelaNewRound(navController: NavController, buttonColors: ButtonColors, viewM
         }
         else updated[index] = (addedValue.toInt() + updated[index].toInt()).toString()
         zvanjaFields.value = updated
+    }
+
+    fun updateScore(index: Int, newValue: String) {
+        if (newValue.isNotEmpty() && !newValue.all { it.isDigit() }) return
+        val updated = scoreFields.value.toMutableList()
+        updated[index] = newValue
+        val entered = newValue.toIntOrNull()
+
+        if (entered == 162) {
+            // Netko je pokupio sve bodove - ostali automatski idu na 0 (vrijedi za sve modove).
+            for (i in updated.indices) {
+                if (i != index) updated[i] = "0"
+                else addZvanja(i, "90")
+            }
+        } else if (mode.supportsAutoFill && mode.columnCount == 2) {
+            val otherIndex = 1 - index
+            if (entered != null) {
+                updated[otherIndex] = viewModel.autoFillPartner(entered)?.toString() ?: ""
+            }
+        } else if (mode.columnCount == 3 && entered != null) {
+            val otherIndices = (0 until mode.columnCount).filter { it != index }
+            val filled = otherIndices.filter { updated[it].isNotEmpty() }
+            val empty = otherIndices.filter { updated[it].isEmpty() }
+            if (filled.size == 1 && empty.size == 1) {
+                val otherValue = updated[filled[0]].toIntOrNull() ?: 0
+                val remaining = 162 - entered - otherValue
+                if (remaining in 0..162) {
+                    updated[empty[0]] = remaining.toString()
+                }
+            }
+        }
+
+        scoreFields.value = updated
+        showError = false
     }
 
     Box(
