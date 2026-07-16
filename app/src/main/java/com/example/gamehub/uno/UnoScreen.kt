@@ -121,19 +121,20 @@ fun Uno(navController: NavController, buttonColors: ButtonColors, viewModel: Uno
                                 fontWeight = FontWeight.Bold,
                                 modifier = Modifier.weight(1f)
                             )
-                            Text(
-                                text = "${player.score}",
-                                fontSize = (screenWidth.value * 0.055f).sp,
-                                fontWeight = FontWeight.Bold,
-                                modifier = Modifier.padding(end = 12.dp)
-                            )
                             if (player.looseNumber > 0) {
                                 Text(
                                     text = "💀 x${player.looseNumber}",
                                     fontSize = (screenWidth.value * 0.04f).sp,
                                     color = MaterialTheme.colorScheme.error
                                 )
+                                Spacer(modifier = Modifier.width(8.dp))
                             }
+                            Text(
+                                text = "${player.score}",
+                                fontSize = (screenWidth.value * 0.055f).sp,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier.padding(end = 12.dp)
+                            )
                         }
                     }
                 }

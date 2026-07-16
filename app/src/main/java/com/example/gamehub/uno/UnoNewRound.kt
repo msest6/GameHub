@@ -141,6 +141,7 @@ fun UnoNewRound(navController: NavController, buttonColors: ButtonColors, viewMo
                 onClick = {
                     val scores = roundInputs.map { it.text.toIntOrNull() ?: 0 }
                     viewModel.addRoundScores(scores)
+                    viewModel.advanceDealer()
                     navController.popBackStack()
                 },
                 modifier = Modifier
