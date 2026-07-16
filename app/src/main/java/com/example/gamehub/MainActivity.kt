@@ -41,6 +41,7 @@ import com.example.gamehub.data.DartsRepository
 import com.example.gamehub.data.GradDrzavaRepository
 import com.example.gamehub.data.PreferencesDataStore
 import com.example.gamehub.data.ThemeRepository
+import com.example.gamehub.data.UnoRepository
 import com.example.gamehub.data.model.CheckoutTable
 import com.example.gamehub.data.model.ThemeMode
 import com.example.gamehub.graddrzava.GradDrzava
@@ -56,6 +57,13 @@ import com.example.gamehub.ui.HomeScreen
 import com.example.gamehub.ui.SettingsScreen
 import com.example.gamehub.ui.common.GameScaffold
 import com.example.gamehub.ui.theme.GameHubTheme
+import com.example.gamehub.uno.Uno
+import com.example.gamehub.uno.UnoMenu
+import com.example.gamehub.uno.UnoNewGame
+import com.example.gamehub.uno.UnoNewRound
+import com.example.gamehub.uno.UnoRoundsList
+import com.example.gamehub.uno.UnoViewModel
+import com.example.gamehub.uno.UnoViewModelFactory
 import kotlinx.coroutines.launch
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.decodeFromString
@@ -76,6 +84,7 @@ class MainActivity : ComponentActivity() {
             val boardGameRepository = remember { BoardGameRepository(prefs) }
             val gradDrzavaRepository = remember { GradDrzavaRepository(prefs) }
             val belaRepository = remember { BelaRepository(prefs) }
+            val unoRepository = remember { UnoRepository(prefs) }
             val inputStream = resources.openRawResource(R.raw.checkout_table)
             val json = inputStream.bufferedReader().use { it.readText() }
             val checkoutTable = remember { Json.decodeFromString<List<CheckoutTable>>(json) }
@@ -88,6 +97,9 @@ class MainActivity : ComponentActivity() {
             val belaViewModel: BelaViewModel = viewModel(
                 factory = BelaViewModelFactory(belaRepository)
             )
+            val unoViewModel: UnoViewModel = viewModel(
+              factory = UnoViewModelFactory(unoRepository)
+            )
 
             var themeMode by remember { mutableStateOf(ThemeMode.LIGHT) }
 
@@ -97,6 +109,7 @@ class MainActivity : ComponentActivity() {
                 gradDrzavaViewModel.loadIfNeeded()
                 dartsViewModel.loadIfNeeded()
                 belaViewModel.loadIfNeeded()
+                unoViewModel.loadIfNeeded()
             }
 
             GameHubTheme(themeMode) {
@@ -283,6 +296,45 @@ class MainActivity : ComponentActivity() {
                             content = {
                                 BelaNewRound(navController, buttonColors, belaViewModel)
                             }
+                        )
+                    }
+                    composable("uno"){
+                        Uno(navController, buttonColors, unoViewModel)
+                    }
+                    composable("unoMenu"){
+                        GameScaffold(
+                            navController,
+                            buttonColors,
+                            title = "Uno",
+                            onArrowClick = "home",
+                            content = { UnoMenu(navController, buttonColors) }
+                        )
+                    }
+                    composable("unoNewGame"){
+                        GameScaffold(
+                            navController,
+                            buttonColors,
+                            title = "Uno",
+                            onArrowClick = "unoMenu",
+                            content = { UnoNewGame(navController, buttonColors, unoViewModel) }
+                        )
+                    }
+                    composable("unoNewRound"){
+                        GameScaffold(
+                            navController,
+                            buttonColors,
+                            title = "Uno",
+                            onArrowClick = "uno",
+                            content = { UnoNewRound(navController, buttonColors, unoViewModel) }
+                        )
+                    }
+                    composable("unoRoundsList"){
+                        GameScaffold(
+                            navController,
+                            buttonColors,
+                            title = "Uno",
+                            onArrowClick = "uno",
+                            content = { UnoRoundsList(navController, buttonColors, unoViewModel) }
                         )
                     }
                 }

@@ -48,6 +48,20 @@ fun HomeScreen(navController: NavController, buttonColors: ButtonColors) {
         }
 
         Button(
+            onClick = { navController.navigate("unoMenu") },
+            modifier = Modifier
+                .padding(16.dp)
+                .width(screenWidth / 1.1f)
+                .height(screenWidth / 4),
+            colors = buttonColors
+        ) {
+            Text(
+                text = "Uno Kalkulator",
+                fontSize = (screenWidth.value * 0.08f).sp
+            )
+        }
+
+        Button(
             onClick = { navController.navigate("boardGames") },
             modifier = Modifier
                 .padding(16.dp)
