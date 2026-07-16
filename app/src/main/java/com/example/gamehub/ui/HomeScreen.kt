@@ -30,12 +30,7 @@ fun HomeScreen(navController: NavController, buttonColors: ButtonColors) {
     val screenWidth = configuration.screenWidthDp.dp
 
     val items = listOf(
-        MenuItem("belaMenu", "Bela kalkulator"),
-        MenuItem("unoMenu", "Uno Kalkulator"),
-        MenuItem("boardGames", "Društvene Igre"),
-        MenuItem("tictactoe", "Krizic Kruzic"),
-        MenuItem("dartsMenu", "Pikado kalkulator"),
-        MenuItem("gradDrzavaMenu", "Država Grad"),
+        MenuItem("tictactoe", "Krizic Kruzic")
     )
 
     LazyColumn(
